@@ -1,48 +1,62 @@
-#!/bin/bash
+#!/bin/sh
+
 set -e
 
-echo "🚀 Iniciando contenedor de Laravel..."
+echo "🚀 Iniciando contenedor Laravel API..."
 
-# Verificar si el .env existe
-if [ ! -f .env ]; then
-    echo "⚙️  No existe .env, creando desde ejemplo..."
-    if [ -f .env.example ]; then
-        cp .env.example .env
-    else
-        echo "APP_KEY=" > .env
+# Crear directorios necesarios
+mkdir -p /var/www/html/storage/framework/{cache,sessions,views}
+mkdir -p /var/www/html/storage/logs
+mkdir -p /var/www/html/bootstrap/cache
+
+# Asignar permisos correctos
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Esperar a que la BD esté lista (solo si no es SQLite)
+if [ -n "$DB_HOST" ] && [ "$DB_CONNECTION" != "sqlite" ]; then
+    echo "⏳ Esperando a que la base de datos ($DB_HOST:$DB_PORT) esté disponible..."
+    until nc -z "$DB_HOST" "${DB_PORT:-3306}"; do
+        echo "⏳ Esperando conexión a la BD..."
+        sleep 2
+    done
+    echo "✅ Base de datos disponible!"
+fi
+
+# Crear base SQLite si aplica
+if [ "$DB_CONNECTION" = "sqlite" ]; then
+    DB_PATH="${DB_DATABASE:-/var/www/html/database/database.sqlite}"
+    if [ ! -f "$DB_PATH" ]; then
+        echo "📦 Creando base SQLite en $DB_PATH"
+        touch "$DB_PATH"
+        chown www-data:www-data "$DB_PATH"
+        chmod 664 "$DB_PATH"
     fi
 fi
 
-# Si existe variable APP_KEY en entorno, actualizar .env
-if [ -n "$APP_KEY" ]; then
-    sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|g" .env
-fi
-
-# Esperar a MySQL (si existe variable DB_HOST)
-if [ -n "$DB_HOST" ]; then
-    echo "⏳ Esperando a que MySQL ($DB_HOST) esté disponible..."
-    until nc -z -v -w30 $DB_HOST ${DB_PORT:-3306}; do
-      echo "   → Esperando a MySQL..."
-      sleep 3
-    done
-    echo "✅ MySQL disponible!"
-fi
-
-# Limpiar y optimizar Laravel
+# Limpiar y cachear configuración
 echo "⚙️  Limpiando cachés..."
-php artisan config:clear || true
-php artisan cache:clear || true
-
-# Solo generar key si no existe ya en el .env
-if ! grep -q "APP_KEY=base64" .env; then
-    echo "🔑 Generando APP_KEY..."
-    php artisan key:generate --ansi || true
-fi
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
+php artisan view:clear
 
 echo "⚙️  Cacheando configuración, rutas y vistas..."
-php artisan config:cache || true
-php artisan route:cache || true
-php artisan view:cache || true
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
-echo "✅ Contenedor listo. Iniciando Apache..."
-exec apache2-foreground
+# Ejecutar migraciones (si se desea)
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+    echo "🔄 Ejecutando migraciones..."
+    php artisan migrate --force --no-interaction || true
+fi
+
+# Generar documentación Swagger si existe el comando
+if [ -f artisan ]; then
+    echo "📘 Generando documentación Swagger..."
+    php artisan l5-swagger:generate || echo "⚠️ No se pudo generar Swagger"
+fi
+
+echo "✅ Contenedor listo. Iniciando servidor..."
+exec "$@"
