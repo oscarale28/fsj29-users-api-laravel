@@ -13,8 +13,6 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
-    nginx \
-    supervisor \
     libzip-dev \
     libicu-dev \
     libfreetype6-dev \
@@ -24,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     netcat-openbsd \
     bash \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo_mysql mbstring gd zip intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -32,6 +31,7 @@ RUN a2enmod rewrite headers \
     && echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -40,13 +40,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Copiar composer.json primero para aprovechar cache de Docker
+# Copiar composer.json y composer.lock primero (para cache)
 COPY composer.json composer.lock ./
 
 # Instalar dependencias PHP (sin dev)
 RUN composer install --no-dev --no-scripts --optimize-autoloader --no-interaction
 
-# Copiar todo el proyecto
+# Copiar el resto del proyecto
 COPY . /var/www/html/
 
 # Ajustar permisos
@@ -55,8 +55,8 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
 
-# Exponer puerto
+# Exponer puerto 80
 EXPOSE 80
 
-# Ejecutar entrypoint
+# Comando por defecto
 CMD ["/usr/local/bin/docker-entrypoint.sh"]
