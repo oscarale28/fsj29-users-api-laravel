@@ -6,13 +6,25 @@ WORKDIR /var/www/html
 
 # Instalar dependencias del sistema y extensiones de PHP
 RUN apt-get update && apt-get install -y \
+    git \
     curl \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    libzip-dev \
+    zip \
     unzip \
-    && docker-php-ext-install pdo_mysql mbstring gd zip \
+    nginx \
+    supervisor \
+    libzip-dev \
+    libicu-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libwebp-dev \
+    default-mysql-client \
+    libpq-dev \
+    netcat-openbsd \
+    bash \
+    && docker-php-ext-install pdo_mysql mbstring gd zip intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Habilitar módulos de Apache y configurar DocumentRoot
