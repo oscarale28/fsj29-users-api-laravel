@@ -23,7 +23,7 @@ class JwtMiddleware
             if (!$token) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token no proporcionado'
+                    'message' => 'Token not provided'
                 ], 401);
             }
 
@@ -35,7 +35,7 @@ class JwtMiddleware
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Usuario no encontrado'
+                    'message' => 'User not found'
                 ], 401);
             }
 
@@ -49,7 +49,7 @@ class JwtMiddleware
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Token inválido: ' . $e->getMessage()
+                'message' => 'Invalid token: ' . $e->getMessage()
             ], 401);
         }
     }

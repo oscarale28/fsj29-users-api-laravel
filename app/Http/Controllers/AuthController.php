@@ -11,9 +11,9 @@ use Exception;
 
 /**
  * @OA\Info(
- *     title="API Gestión de Usuarios",
+ *     title="User Management API",
  *     version="1.0.0",
- *     description="API REST para gestión de usuarios con autenticación JWT"
+ *     description="REST API for user management with JWT authentication"
  * )
  * @OA\SecurityScheme(
  *     securityScheme="bearerAuth",
@@ -34,8 +34,8 @@ class AuthController extends Controller
     /**
      * @OA\Post(
      *     path="/api/auth/login",
-     *     summary="Autenticar usuario",
-     *     tags={"Autenticación"},
+     *     summary="Authenticate user",
+     *     tags={"Authentication"},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -46,7 +46,7 @@ class AuthController extends Controller
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Login exitoso",
+     *         description="Successful login",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object",
@@ -63,48 +63,85 @@ class AuthController extends Controller
      *     ),
      *     @OA\Response(
      *         response=401,
-     *         description="Credenciales inválidas"
+     *         description="Invalid credentials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Invalid credentials")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="The provided data is invalid"),
+     *             @OA\Property(property="errors", type="object",
+     *                 @OA\Property(property="email", type="array", @OA\Items(type="string", example="The email field is required")),
+     *                 @OA\Property(property="password", type="array", @OA\Items(type="string", example="The password field is required"))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error processing request")
+     *         )
      *     )
      * )
      */
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string',
+            ]);
 
-        $user = User::where('email', $request->email)->first();
+            $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials'
+                ], 401);
+            }
+
+            $tokens = $this->jwtService->generateTokenPair($user);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'access_token' => $tokens['access_token'],
+                    'refresh_token' => $tokens['refresh_token'],
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'created_at' => $user->created_at,
+                    ]
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Credenciales inválidas'
-            ], 401);
+                'message' => 'The provided data is invalid',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error processing request: ' . $e->getMessage()
+            ], 500);
         }
-
-        $tokens = $this->jwtService->generateTokenPair($user);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'access_token' => $tokens['access_token'],
-                'refresh_token' => $tokens['refresh_token'],
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'created_at' => $user->created_at,
-                ]
-            ]
-        ]);
     }
 
     /**
      * @OA\Post(
      *     path="/api/auth/refresh",
-     *     summary="Renovar access token usando refresh token",
-     *     tags={"Autenticación"},
+     *     summary="Refresh access token using refresh token",
+     *     tags={"Authentication"},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -114,7 +151,7 @@ class AuthController extends Controller
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Tokens renovados exitosamente",
+     *         description="Tokens refreshed successfully",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object",
@@ -125,7 +162,30 @@ class AuthController extends Controller
      *     ),
      *     @OA\Response(
      *         response=401,
-     *         description="Refresh token inválido o expirado"
+     *         description="Invalid or expired refresh token",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Invalid or expired refresh token")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation error"),
+     *             @OA\Property(property="errors", type="object",
+     *                 @OA\Property(property="refresh_token", type="array", @OA\Items(type="string", example="The refresh_token field is required"))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Error processing request")
+     *         )
      *     )
      * )
      */
@@ -144,7 +204,7 @@ class AuthController extends Controller
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Refresh token inválido o expirado'
+                    'message' => 'Invalid or expired refresh token'
                 ], 401);
             }
 
@@ -161,14 +221,14 @@ class AuthController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error de validación',
+                'message' => 'Validation error',
                 'errors' => $e->errors()
             ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al renovar token: ' . $e->getMessage()
-            ], 401);
+                'message' => 'Error processing request: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

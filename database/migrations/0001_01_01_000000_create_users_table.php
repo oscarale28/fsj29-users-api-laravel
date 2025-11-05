@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('password');
+            $table->string('password', 255); // 255 to accommodate hashed passwords
             $table->timestamps();
         });
 

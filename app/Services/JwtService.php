@@ -90,12 +90,12 @@ class JwtService
 
             // Validate token type if expected
             if ($expectedType && (!isset($decoded->type) || $decoded->type !== $expectedType)) {
-                throw new Exception('Tipo de token inválido. Se esperaba: ' . $expectedType);
+                throw new Exception('Invalid token type. Expected: ' . $expectedType);
             }
 
             return $decoded;
         } catch (\Exception $e) {
-            throw new Exception('Token inválido o expirado: ' . $e->getMessage());
+            throw new Exception('Invalid or expired token: ' . $e->getMessage());
         }
     }
 
@@ -137,7 +137,7 @@ class JwtService
     {
         $secret = env('JWT_SECRET');
         if (empty($secret)) {
-            throw new Exception('JWT_SECRET no está configurado en el archivo .env');
+            throw new Exception('JWT_SECRET is not configured in .env file');
         }
         return $secret;
     }
