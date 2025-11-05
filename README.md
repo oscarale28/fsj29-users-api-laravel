@@ -1,59 +1,253 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# API Gestión de Usuarios
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API REST completa para gestión de usuarios desarrollada con Laravel 12, incluyendo autenticación JWT, CRUD de usuarios y estadísticas de registro.
 
-## About Laravel
+## Documentación Swagger
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+La documentación interactiva está disponible en:
+**https://fsj29-api-users.fqstudio.dev/api/documentation**
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Credenciales para Sandbox
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Para probar los endpoints en Swagger, usa las siguientes credenciales:
 
-## Learning Laravel
+- **Email:** `test@example.com`
+- **Password:** `password123`
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+**Nota:** Después de hacer login, copia el `access_token` y úsalo en el botón "Authorize" de Swagger para autenticar las peticiones protegidas.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Endpoints
 
-## Laravel Sponsors
+### Autenticación
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+#### POST `/api/auth/login`
+Autentica un usuario y retorna un par de tokens JWT (access_token y refresh_token).
 
-### Premium Partners
+**Request:**
+```json
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "user": {
+      "id": 1,
+      "name": "Usuario Test",
+      "email": "test@example.com",
+      "created_at": "2024-01-01T00:00:00.000000Z"
+    }
+  }
+}
+```
 
-## Contributing
+#### POST `/api/auth/refresh`
+Renueva el access token usando el refresh token. Devuelve un nuevo par de tokens.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Request:**
+```json
+{
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+}
+```
 
-## Code of Conduct
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+  }
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Usuarios (Requieren autenticación JWT)
 
-## Security Vulnerabilities
+**Nota:** Todas las rutas requieren el `access_token` en el header `Authorization: Bearer {access_token}`.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### GET `/api/users`
+Lista todos los usuarios registrados.
 
-## License
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Usuario Test",
+      "email": "test@example.com",
+      "created_at": "2024-01-01T00:00:00.000000Z"
+    }
+  ]
+}
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+#### GET `/api/users/{id}`
+Obtiene un usuario específico por ID.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Usuario Test",
+    "email": "test@example.com",
+    "created_at": "2024-01-01T00:00:00.000000Z"
+  }
+}
+```
+
+#### POST `/api/users`
+Crea un nuevo usuario.
+
+**Request:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "Password123!"
+}
+```
+
+**Validación de contraseña:**
+- Mínimo 8 caracteres
+- Al menos una letra minúscula (a-z)
+- Al menos una letra mayúscula (A-Z)
+- Al menos un número (0-9)
+- Al menos un carácter especial (@$!%*#?&)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User created successfully",
+  "data": {
+    "id": 2,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "created_at": "2024-01-01T00:00:00.000000Z"
+  }
+}
+```
+
+#### PUT `/api/users/{id}`
+Actualiza un usuario existente. Todos los campos son opcionales.
+
+**Request:**
+```json
+{
+  "name": "John Updated",
+  "email": "john.updated@example.com",
+  "password": "NewPassword123!"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User updated successfully",
+  "data": {
+    "id": 2,
+    "name": "John Updated",
+    "email": "john.updated@example.com",
+    "created_at": "2024-01-01T00:00:00.000000Z"
+  }
+}
+```
+
+#### DELETE `/api/users/{id}`
+Elimina un usuario.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User deleted successfully"
+}
+```
+
+### Estadísticas (Requieren autenticación JWT)
+
+#### GET `/api/statistics/daily`
+Obtiene estadísticas diarias de usuarios registrados.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "date": "2024-01-01",
+      "registered_users": 5
+    },
+    {
+      "date": "2024-01-02",
+      "registered_users": 3
+    }
+  ]
+}
+```
+
+#### GET `/api/statistics/weekly`
+Obtiene estadísticas semanales de usuarios registrados.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "year": 2024,
+      "week": 1,
+      "from_date": "2024-01-01",
+      "to_date": "2024-01-07",
+      "registered_users": 15
+    }
+  ]
+}
+```
+
+#### GET `/api/statistics/monthly`
+Obtiene estadísticas mensuales de usuarios registrados.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "year": 2024,
+      "month": 1,
+      "period": "2024-01",
+      "registered_users": 45
+    }
+  ]
+}
+```
+
+## Notas Importantes
+
+- **Access Token**: Expira después de 5 minutos. Se usa para autenticarse en todas las peticiones protegidas.
+- **Refresh Token**: Expira después de 7 días. Se usa solo para renovar el access token.
+- Usa el endpoint `/api/auth/refresh` con el `refresh_token` para obtener un nuevo par de tokens.
+- Todos los endpoints excepto `/api/auth/login` y `/api/auth/refresh` requieren el `access_token` en el header `Authorization: Bearer {access_token}`.
+- El patrón implementado sigue OAuth 2.0 con access token y refresh token separados.
+
+## Tecnologías
+
+- Laravel 12
+- PHP 8.2+
+- MySQL
+- Firebase JWT (firebase/php-jwt)
+- L5-Swagger (darkaonline/l5-swagger)
